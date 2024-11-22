@@ -2,34 +2,34 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const mongoose = require("mongoose");
-const cors = require("cors");
-const postRoutes = require("./routes/posts");
-const commentRoutes = require("./routes/comments");
+const dotenv = require("dotenv");
+const authRoutes = require("./routes/auth");
+const postRoutes = require("./routes/posts"); // make sure it's posts or comments
+const commentRoutes = require("./routes/comments"); // check if you need both
+
+dotenv.config();
 
 const app = express();
-const server = http.createServer(app); // Create an HTTP server
-const io = socketIo(server); // Initialize Socket.io
+const server = http.createServer(app);
+const io = socketIo(server); // Initialize socket.io with the HTTP server
 
-app.use(cors());
-app.use(express.json());
-
-// Add socket.io to req object (so it's available in routes)
+// Use socket.io globally for all routes
 app.use((req, res, next) => {
-  req.io = io;
+  req.io = io; // Attach io instance to request
   next();
 });
 
-// Routes
-app.use("/api/posts", postRoutes);
-app.use("/api/comments", commentRoutes);
+app.use(express.json());
 
-// Connection to MongoDB
-mongoose.connect("your_mongoDB_connection_string", { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("Connected to DB"))
-  .catch((err) => console.log(err));
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("MongoDB Connected"))
+  .catch(err => console.log(err));
 
-// Server listening
+// Register Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/posts", postRoutes); // Posts route (ensure this is correct)
+app.use("/api/comments", commentRoutes); // Comments route (ensure this is correct)
+
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
