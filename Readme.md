@@ -71,7 +71,7 @@ social-media-api/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/social-media-api.git
+   git clone https://github.com/Omlomate/social-media-api_om_lomate_assignment.git
    cd social-media-api
    ```
 
