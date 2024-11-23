@@ -1,31 +1,55 @@
+//routes/chat.js
 const express = require("express");
 const router = express.Router();
 const { verifyToken } = require("../middleware/auth");
+const { body, validationResult } = require("express-validator");
 
-// Store messages in-memory or you can integrate with DB for persistence
-let messages = []; // Store messages temporarily in memory (use DB for persistence in production)
+// In-memory message storage (use a database in production)
+let messages = [];
 
 // Chat: Get all messages
 router.get("/", verifyToken, (req, res) => {
-  res.status(200).json({ messages });
+  res.status(200).json({
+    success: true,
+    messages,
+  });
 });
 
 // Chat: Send a message
-router.post("/", verifyToken, (req, res) => {
-  const { text } = req.body;
-  const message = {
-    text,
-    user: req.user.id,
-    timestamp: new Date(),
-  };
+router.post(
+  "/",
+  [
+    verifyToken,
+    body("text").notEmpty().withMessage("Message text is required").isLength({ max: 500 }).withMessage("Message is too long"),
+  ],
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
 
-  // Emit the new message to all connected clients
-  req.io.emit("newMessage", message);
+    const { text } = req.body;
+    const message = {
+      text,
+      user: req.user.id,
+      name: req.user.name || "Anonymous", // Optionally include user name
+      timestamp: new Date(),
+    };
 
-  // Store message temporarily (use DB to persist in production)
-  messages.push(message);
+    // Emit the new message to all connected clients
+    if (req.io) {
+      req.io.emit("newMessage", message);
+    }
 
-  res.status(201).json({ message: "Message sent", message });
-});
+    // Temporarily store message (replace with DB persistence in production)
+    messages.push(message);
+
+    res.status(201).json({
+      success: true,
+      message: "Message sent successfully",
+      data: message,
+    });
+  }
+);
 
 module.exports = router;

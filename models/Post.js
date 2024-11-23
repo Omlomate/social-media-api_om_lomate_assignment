@@ -1,25 +1,21 @@
 // models/Post.js
+const mongoose = require("mongoose");
 
-const mongoose = require('mongoose');
+const postSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true, minLength: 3 },
+    content: { type: String, required: true, trim: true, minLength: 5 },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    comments: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Comment" }, // Reference to comments
+    ],
+  },
+  { timestamps: true } // Adds `createdAt` and `updatedAt` automatically
+);
 
-const postSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-  },
-  content: {
-    type: String,
-    required: true,
-  },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Assuming you have a User model
-    required: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-module.exports = mongoose.model('Post', postSchema);
+const Post = mongoose.model("Post", postSchema);
+module.exports = Post;

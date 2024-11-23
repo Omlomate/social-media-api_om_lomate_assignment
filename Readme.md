@@ -5,15 +5,13 @@
 
 This project provides a backend API for a social media platform with user authentication, post creation, commenting, and real-time features such as notifications and chat.
 
-## Features
-
 ### Day 1: Basic Functionality
 1. **User Authentication**
    - User registration and login with JWT-based authentication.
-
+   
 2. **Post Management**
    - Create and fetch posts.
-
+   
 3. **Comment Management**
    - Add comments to posts.
 
@@ -27,10 +25,12 @@ This project provides a backend API for a social media platform with user authen
 ### Day 3: Real-Time Chat and Frontend Integration
 1. **Real-Time Chat**
    - One-to-one chat functionality using Socket.io.
-   - Users can send and receive messages in real time.
+   - Users can send and receive messages in real-time.
 
 2. **Frontend Integration**
    - A React-based frontend (`Chat.js`) was added to enable chat interactions and notifications.
+
+---
 
 ## Project Structure
 
@@ -57,6 +57,8 @@ social-media-api/
     │   └── App.js
     └── package.json
 ```
+
+---
 
 ## Setup Instructions
 
@@ -102,6 +104,8 @@ social-media-api/
    npm start
    ```
 
+---
+
 ## API Endpoints
 
 ### User Authentication
@@ -124,6 +128,8 @@ social-media-api/
 ### Real-Time Chat
 The chat feature is integrated using Socket.io. Refer to the frontend's `Chat.js` for implementation details.
 
+---
+
 ## Real-Time Features
 
 ### Notifications
@@ -131,6 +137,8 @@ The chat feature is integrated using Socket.io. Refer to the frontend's `Chat.js
 
 ### Chat
 - One-to-one messaging system using WebSocket connections.
+
+---
 
 ## Dependencies
 
@@ -141,9 +149,6 @@ The chat feature is integrated using Socket.io. Refer to the frontend's `Chat.js
   - bcrypt
   - jsonwebtoken
   - Socket.io
-- Frontend:
-  - React
-  - Axios
 
-## License
-This project is licensed under the MIT License.
+---
+

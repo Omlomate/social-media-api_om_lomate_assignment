@@ -1,109 +1,159 @@
 // routes/posts.js
-
 const express = require("express");
+const { body, param, validationResult } = require("express-validator");
 const router = express.Router();
 const Post = require("../models/Post");
 const { verifyToken } = require("../middleware/auth");
 
 // Create a new post
-router.post("/", verifyToken, async (req, res) => {
-  try {
+router.post(
+  "/",
+  [
+    verifyToken,
+    body("title").notEmpty().withMessage("Title is required"),
+    body("content").notEmpty().withMessage("Content is required"),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
     const { title, content } = req.body;
 
-    // Check if title and content are provided
-    if (!title || !content) {
-      return res.status(400).json({ message: "Title and content are required" });
+    try {
+      const newPost = new Post({
+        title,
+        content,
+        user: req.user.id, // User ID from token
+      });
+
+      await newPost.save();
+
+      // Emit socket event for new post
+      if (req.io) {
+        req.io.emit("newPost", {
+          id: newPost._id,
+          title: newPost.title,
+          content: newPost.content,
+          user: req.user.id,
+        });
+      }
+
+      res.status(201).json({ success: true, message: "Post created successfully", data: newPost });
+    } catch (error) {
+      console.error("Error creating post:", error.message);
+      res.status(500).json({ success: false, message: "Error creating post", error: error.message });
     }
-
-    // Create a new post
-    const newPost = new Post({
-      title,
-      content,
-      user: req.user.id, // Assuming user is available in req.user after token verification
-    });
-
-    // Save the post to the database
-    await newPost.save();
-
-    // Emit a socket.io event to notify about the new post
-    req.io.emit("newPost", newPost);
-
-    res.status(201).json({ message: "Post created successfully", post: newPost });
-  } catch (error) {
-    res.status(500).json({ message: "Error creating post", error });
   }
-});
+);
 
 // Get all posts
-router.get("/", verifyToken, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const posts = await Post.find().populate("user", "username"); // Fetch all posts and populate user info
-    if (posts.length === 0) {
-      return res.status(404).json({ message: "No posts found" });
-    }
-    res.status(200).json({ posts });
+    const posts = await Post.find().populate("user", "username");
+    res.status(200).json({ success: true, data: posts });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching posts", error });
+    console.error("Error fetching posts:", error.message);
+    res.status(500).json({ success: false, message: "Error fetching posts", error: error.message });
   }
 });
 
 // Get a single post by ID
-router.get("/:id", verifyToken, async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id).populate("user", "username");
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
+router.get(
+  "/:id",
+  [
+    param("id").isMongoId().withMessage("Invalid Post ID"),
+    verifyToken,
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
-    res.status(200).json({ post });
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching post", error });
+
+    try {
+      const post = await Post.findById(req.params.id).populate("user", "username");
+      if (!post) {
+        return res.status(404).json({ success: false, message: "Post not found" });
+      }
+      res.status(200).json({ success: true, data: post });
+    } catch (error) {
+      console.error("Error fetching post:", error.message);
+      res.status(500).json({ success: false, message: "Error fetching post", error: error.message });
+    }
   }
-});
+);
 
 // Update a post
-router.put("/:id", verifyToken, async (req, res) => {
-  try {
-    const { title, content } = req.body;
-
-    // Find the post by ID and check if the user is the author
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
+router.put(
+  "/:id",
+  [
+    verifyToken,
+    param("id").isMongoId().withMessage("Invalid Post ID"),
+    body("title").optional().isString(),
+    body("content").optional().isString(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    if (post.user.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized to update this post" });
+    try {
+      const { title, content } = req.body;
+
+      const post = await Post.findById(req.params.id);
+      if (!post) {
+        return res.status(404).json({ success: false, message: "Post not found" });
+      }
+
+      if (post.user.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, message: "Not authorized to update this post" });
+      }
+
+      post.title = title || post.title;
+      post.content = content || post.content;
+
+      await post.save();
+      res.status(200).json({ success: true, message: "Post updated successfully", data: post });
+    } catch (error) {
+      console.error("Error updating post:", error.message);
+      res.status(500).json({ success: false, message: "Error updating post", error: error.message });
     }
-
-    // Update the post
-    post.title = title || post.title;
-    post.content = content || post.content;
-
-    await post.save();
-    res.status(200).json({ message: "Post updated", post });
-  } catch (error) {
-    res.status(500).json({ message: "Error updating post", error });
   }
-});
+);
 
 // Delete a post
-router.delete("/:id", verifyToken, async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
+router.delete(
+  "/:id",
+  [
+    verifyToken,
+    param("id").isMongoId().withMessage("Invalid Post ID"),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    // Check if the user is the author of the post
-    if (post.user.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized to delete this post" });
-    }
+    try {
+      const post = await Post.findById(req.params.id);
+      if (!post) {
+        return res.status(404).json({ success: false, message: "Post not found" });
+      }
 
-    await post.remove();
-    res.status(200).json({ message: "Post deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Error deleting post", error });
+      if (post.user.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, message: "Not authorized to delete this post" });
+      }
+
+      await post.remove();
+      res.status(200).json({ success: true, message: "Post deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting post:", error.message);
+      res.status(500).json({ success: false, message: "Error deleting post", error: error.message });
+    }
   }
-});
+);
 
 module.exports = router;
